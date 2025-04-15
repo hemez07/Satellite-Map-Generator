@@ -106,3 +106,57 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 G_sat2map = Generator().to(device)
 D_map = Discriminator().to(device)
 
+
+
+
+
+# ------------------------
+# 3. Training Loop
+# ------------------------
+import torch.optim as optim
+
+# Loss functions
+adversarial_loss = nn.BCELoss()
+l1_loss = nn.L1Loss()
+
+# Optimizers
+lr = 0.0002
+optimizer_G = optim.Adam(G_sat2map.parameters(), lr=lr, betas=(0.5, 0.999))
+optimizer_D = optim.Adam(D_map.parameters(), lr=lr, betas=(0.5, 0.999))
+
+# Training
+epochs = 10
+for epoch in range(epochs):
+    for (sat_images, _), (map_images, _) in zip(satellite_loader, map_loader):
+        sat_images = sat_images.to(device)
+        map_images = map_images.to(device)
+
+        # Generate fake maps
+        fake_map = G_sat2map(sat_images)
+
+        # ------------------
+        # Train Discriminator
+        # ------------------
+        real_preds = D_map(map_images)
+        real_loss = adversarial_loss(real_preds, torch.ones_like(real_preds))
+
+        fake_preds = D_map(fake_map.detach())
+        fake_loss = adversarial_loss(fake_preds, torch.zeros_like(fake_preds))
+
+        d_loss = (real_loss + fake_loss) / 2
+        optimizer_D.zero_grad()
+        d_loss.backward()
+        optimizer_D.step()
+
+        # ------------------
+        # Train Generator
+        # ------------------
+        g_adv = adversarial_loss(D_map(fake_map), torch.ones_like(fake_preds))
+        g_l1 = l1_loss(fake_map, map_images)
+        total_g_loss = g_adv + 10 * g_l1
+
+        optimizer_G.zero_grad()
+        total_g_loss.backward()
+        optimizer_G.step()
+
+    print(f"Epoch [{epoch+1}/{epochs}] | D Loss: {d_loss.item():.4f} | G Loss: {total_g_loss.item():.4f}")
