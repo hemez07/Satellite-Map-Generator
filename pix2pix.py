@@ -160,3 +160,24 @@ for epoch in range(epochs):
         optimizer_G.step()
 
     print(f"Epoch [{epoch+1}/{epochs}] | D Loss: {d_loss.item():.4f} | G Loss: {total_g_loss.item():.4f}")
+
+
+
+
+
+# Generate a translated image
+test_image, _ = satellite_dataset[0]
+test_image = test_image.unsqueeze(0)
+translated_image = G_sat2map(test_image).detach().squeeze().permute(1, 2, 0)
+
+# Display original and translated images
+fig, axes = plt.subplots(1, 2, figsize=(8, 4))
+axes[0].imshow(test_image.squeeze().permute(1, 2, 0))
+axes[0].set_title("Original (Satellite)")
+axes[0].axis("off")
+
+axes[1].imshow(translated_image.numpy())
+axes[1].set_title("Translated (Map)")
+axes[1].axis("off")
+
+plt.show()
